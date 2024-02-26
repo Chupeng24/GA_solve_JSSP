@@ -6,7 +6,11 @@ from pymoo.optimize import minimize
 from pymoo.termination import get_termination
 from JSSP_initialization import JSSP_initial
 import matplotlib.pyplot as plt
+import plotly as py
 import plotly.express as px
+import plotly.figure_factory as ff
+
+pyplt = py.offline.plot
 import time
 import os
 from JSSP_operator import *
@@ -14,7 +18,7 @@ from JSSP_operator import *
 if __name__ == "__main__":
     t1 = time.time()
     # problem
-    job_list = ["A"] * 5 + ["B"] * 5 + ["C"] * 5 + ["D"] * 5
+    job_list = ["A"] * 1 + ["B"] * 1 + ["C"] * 1 + ["D"] * 2
     proc_data, ope_num_list, proc_tab_array = gen_order_data(job_list)
     ins_data = (proc_data, ope_num_list)
     problem = JSSP(ins_data)
@@ -93,9 +97,10 @@ if __name__ == "__main__":
             op_idx += 1
             gantt_data.append(dict(Task=task, Start=start, Finish=end, Resource=f"Machine {m_idx + 1}"))
     df = pd.DataFrame(gantt_data)
-    fig = px.timeline(df, x_start="Start", x_end="Finish", y="Resource", color="Task")
+    # fig = ff.create_gantt(df, index_col='')
+    fig = px.timeline(df, x_start="Start", x_end="Finish", y="Task")
     fig.update_yaxes(autorange="reversed")  # otherwise tasks are listed from the bottom up
-    # fig.show()
+    fig.show()
 
 
     if not os.path.exists("images"):
