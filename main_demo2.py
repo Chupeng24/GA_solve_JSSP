@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import plotly as py
 import plotly.express as px
 import plotly.figure_factory as ff
-import datetime
 
 pyplt = py.offline.plot
 import time
@@ -17,20 +16,19 @@ import os
 from JSSP_operator import *
 
 if __name__ == "__main__":
-    cur_time = datetime.datetime.now().strftime("%Y-%m-%d %H")
-    dt = datetime.datetime.strptime(cur_time, "%Y-%m-%d %H")
-    print(cur_time)
-
     t1 = time.time()
     # problem
-    job_list = ["A"] * 5 + ["B"] * 5 + ["C"] * 5 + ["D"] * 2
+    job_list = ["A"] * 5 + ["B"] * 5 + ["C"] * 5 + ["D"] * 5
     proc_data, ope_num_list, proc_tab_array = gen_order_data(job_list)
     ins_data = (proc_data, ope_num_list)
     problem = JSSP(ins_data)
+    Table = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [], 13: []}
+    Task_list = []
 
     # initialize population
     Pop_size = 100
     X = JSSP_initial(problem, Pop_size)
+
 
     # algorithm
     algorithm = GA(
@@ -49,7 +47,7 @@ if __name__ == "__main__":
                    seed=1,
                    save_history=True,
                    verbose=True)
-    
+
     t2 = time.time()
     spend_time = t2 - t1
 
@@ -79,7 +77,7 @@ if __name__ == "__main__":
 
     mch_proc_info = dict()
     for i in range(problem.JS.m):
-        mch_proc_info[f"M {i+1}"] = []
+        mch_proc_info[f"M {i + 1}"] = []
 
     gantt_data = []
 
@@ -99,29 +97,61 @@ if __name__ == "__main__":
             mch_proc_info[f"M {m_idx + 1}"].append([task_,
                                                     start,
                                                     end])
+            Table[m_idx + 1].append(start)
+            Table[m_idx + 1].append(end)
+            if task not in Task_list:
+                Task_list.append(task)
             op_idx += 1
+            gantt_data.append(dict(Task=task, Start=start, Finish=end, Resource=m_idx + 1))
+    print(gantt_data)
 
-            start_ = (dt + datetime.timedelta(minutes=start)).strftime("%Y-%m-%d %H")
-            end_ = (dt + datetime.timedelta(minutes=end)).strftime("%Y-%m-%d %H")
-
-            gantt_data.append(dict(Task=task, Start=start_, Finish=end_, Resource=f"Machine {m_idx + 1}"))
-    df = pd.DataFrame(gantt_data)
+    # df = pd.DataFrame(gantt_data)
     # fig = ff.create_gantt(df, index_col='')
-    fig = px.timeline(df, x_start="Start", x_end="Finish", y="Resource", color="Task")
-    fig.update_yaxes(autorange="reversed")  # otherwise tasks are listed from the bottom up
-    fig.show()
+    # fig = px.timeline(df, x_start="Start", x_end="Finish", y="Resource", color="Task")
+    # fig.update_yaxes(autorange="reversed")  # otherwise tasks are listed from the bottom up
+    # fig.show()
 
+    # if not os.path.exists("images"):
+    #     os.mkdir("images")
+    # fig.write_image("images/fig1.png")
 
-    if not os.path.exists("images"):
-        os.mkdir("images")
-    fig.write_image("images/fig1.png")
+    def Decode(self, CHS):
+        for i in range(self.State):
+            self.Stage_Decode(CHS, i)
+            Job_end = [self.Jobs[i].last_ot for i in range(self.J_num)]
+            CHS = sorted(range(len(Job_end)), key=lambda k: Job_end[k], reverse=False)
+
+    # 画甘特图
+    def Gantt(data):
+        fig = plt.figure()
+        M = ['red', 'blue', 'yellow', 'orange', 'green', 'moccasin', 'purple', 'pink', 'navajowhite', 'Thistle',
+             'Magenta', 'SlateBlue', 'RoyalBlue', 'Aqua', 'floralwhite', 'ghostwhite', 'goldenrod', 'mediumslateblue',
+             'navajowhite', 'navy', 'sandybrown']
+        M_num = 0
+        for i in range(len(data)):
+            Start_time = data[i]['Start']
+            End_time = data[i]['Finish']
+            Job = data[i]['Task']
+            plt.barh(data[i]['Resource'], width=End_time - Start_time, height=0.8, left=Start_time,
+                     color=M[Task_list.index(Job)], edgecolor='black')
+            plt.text(x=Start_time + ((End_time - Start_time) / 2 - 0.25), y=data[i]['Resource'] - 0.2,
+                     s=Task_list.index(Job) + 1, size=15, fontproperties='Times New Roman')
+            M_num = max(M_num, data[i]['Resource'])
+        plt.yticks(np.arange(1, M_num + 1), size=20, fontproperties='Times New Roman')
+
+        plt.ylabel("Machine", size=20, fontproperties='SimSun')
+        plt.xlabel("Time", size=20, fontproperties='SimSun')
+        plt.tick_params(labelsize=20)
+        plt.tick_params(direction='in')
+        plt.show()
+    Gantt(gantt_data)
 
     output = ""
     for key, machine_info in mch_proc_info.items():
         # Sort by starting time.
         # if len(machine_info) == 0:
         #     continue
-        machine_info = sorted(machine_info, key= lambda x: x[1])
+        machine_info = sorted(machine_info, key=lambda x: x[1])
         sol_line_tasks = "Machine " + str(key[2:]) + ": "
         sol_line = "           "
 
@@ -142,3 +172,19 @@ if __name__ == "__main__":
         output += sol_line
 
     print(output)
+
+    # Table = {key: sorted(value) for key, value in Table.items()}
+    # # 转换每个键的列表为大小为500的列表，区间内为1，区间外为0
+    # converted_dict = {}
+    # for key, intervals in Table.items():
+    #     # 初始化大小为500的列表，初始值为0
+    #     task_list = [0] * 500
+    #     # 将每个区间内的元素设置为1
+    #     for i in range(0, len(intervals), 2):
+    #         start, end = intervals[i], intervals[i + 1]
+    #         for j in range(start, end):
+    #             task_list[j] = 1
+    #     converted_dict[key] = task_list
+    # Machine_status = pd.DataFrame(converted_dict)
+    # Machine_status.columns = [f"Machine{col}" for col in Machine_status.columns]
+    # print(Machine_status)
